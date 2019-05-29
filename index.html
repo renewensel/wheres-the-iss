@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css"
+        integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ=="
+        crossorigin="" />
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+        integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+    <!-- Make sure you put this AFTER Leaflet's CSS -->
+    <script src="https://unpkg.com/leaflet@1.5.1/dist/leaflet.js"
+        integrity="sha512-GffPMF3RvMeYyc1LWMHtK8EbPv0iNZ8/oTtHPx9/cc2ILxQ+u905qIwdpULaqDkyBKgOaB57QTMg7ztg8Jm2Og=="
+        crossorigin=""></script>
+    <style>
+        body {
+            padding: 0;
+            margin: 0;
+        }
+
+        #issMap {
+            /*
+            height: 360px;
+            width: 560px;
+            */
+            z-index: -10;
+            position: absolute;
+            width: 100%;
+            height: 600px;
+            margin: 0;
+            padding: 0;
+        }
+
+        .do-more-things {
+            filter: grayscale(100%);
+        }
+
+        p {
+            margin: 1rem;
+        }
+    </style>
+
+
+    <title>Fetch JSON from API and map lat lon</title>
+</head>
+
+<body>
+
+    <div class="container mx-auto mt-5 do-more-things">
+        <small>running fetch every 3 seconds</small>
+        <h1 class="mb-5">Where is the ISS?</h1>
+
+
+        <p>latitude: <span id="lat"></span></p>
+        <p>longitude: <span id="lon"></span></p>
+        <p>Visibility: <span id="visibility"></span> </p>
+
+        <p>Timezone: <span id="timeZone"></span> </p>
+
+        <p>Country code: <span id="countryCode"></span> </p>
+
+        <div id="issMap"></div>
+
+
+    </div>
+
+    <script>
+
+        // Making a map and tiles
+
+        const mymap = L.map('issMap').setView([0, 0], 1);
+        const attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>';
+
+        const tileUrl = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+        const tiles = L.tileLayer(tileUrl, { attribution });
+        tiles.addTo(mymap);
+
+        // Making a marker with a custom icon
+        const issIcon = L.icon({
+            iconUrl: 'International_Space_Station.svg.png',
+            iconSize: [50, 32],
+            iconAnchor: [25, 16],
+        });
+
+        const marker = L.marker([0, 0], { icon: issIcon }).addTo(mymap);
+
+        const api_url = "https://api.wheretheiss.at/v1/satellites/25544";
+
+
+        async function getISS() {
+            const response = await fetch(api_url);
+            const data = await response.json();
+
+            // destructuring takes the pieces out of javascript object
+            // or an array and puts them into separate variables
+            const { latitude, longitude, visibility } = data;
+            console.log(latitude);
+            console.log(longitude);
+            console.log(visibility);
+            const baseUrlCountry = await fetch(`${"https://api.wheretheiss.at/v1/coordinates/"}${[latitude, longitude]}`);
+            const dataCountry = await baseUrlCountry.json();
+
+            let timezone_id = null;
+            let country_code = null;
+
+            if (dataCountry.status) {
+                timezone_id = "no data / or ISS over sea";
+                country_code = "no data / or ISS over sea";
+            } else {
+                timezone_id = dataCountry.timezone_id;
+                country_code = dataCountry.country_code;
+            }
+
+            //const { timezone_id, country_code } = dataCountry;
+            console.log(dataCountry);
+
+            //L.marker([latitude, longitude]).addTo(mymap);
+            marker.setLatLng([latitude, longitude]);
+
+            document.querySelector("#lat").textContent = latitude;
+            document.querySelector("#lon").textContent = longitude;
+            document.querySelector("#visibility").textContent = visibility;
+            document.querySelector("#timeZone").textContent = timezone_id;
+            document.querySelector("#countryCode").textContent = country_code;
+
+
+        }
+        // run function every 3 seconds
+        let myInterval = setInterval(getISS, 3000);
+        getISS();
+    </script>
+</body>
+
+</html>
